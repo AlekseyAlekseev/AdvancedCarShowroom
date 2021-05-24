@@ -12,16 +12,19 @@ public class Manufacturer {
 
     private final int CREATE_AUTO = 5000;
 
-    public Manufacturer (CarShowroom carShowroom) {
+    public Manufacturer(CarShowroom carShowroom) {
         this.carShowroom = carShowroom;
     }
 
     /**
      * Производим автомобиль
      */
-    public synchronized void carRelease() {
-        locker.lock();
+    public void carRelease() {
         try {
+            while (carShowroom.getCars().size() > 0) {
+                condition.await();
+            }
+            locker.lock();
             Thread.sleep(CREATE_AUTO);
             carShowroom.getCars().add(new Car());
             System.out.println("Производитель " + Thread.currentThread().getName() + " выпустил 1 авто");
@@ -37,11 +40,12 @@ public class Manufacturer {
     /**
      * Проверяем есть ли автомобиль в наличии
      */
-    public synchronized Car carSale() {
-        locker.lock();
+    public Car carSale() {
         try {
+            locker.lock();
             while (carShowroom.getCars().size() == 0) {
-                System.out.println("Автосалон: Запрошенного автомобиля нет в наличии");
+                System.out.println("Автосалон: Запрошенного автомобиля для " +
+                        Thread.currentThread().getName() + " нет в наличии");
                 condition.await();
             }
         } catch (InterruptedException err) {
