@@ -1,50 +1,70 @@
 package ru.netology;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class CarShowroom {
+    // Машин в наличие
+    private int product=0;
+    // План продаж
+    public final int SALES_PLAN = 10;
+    // Кол-во продаж
+    private int sales = 0;
+    // Время оформления автомобиля
+    private final int carTimeRegistration = 500;
+    // Время приёмки нового автомобиля
+    private final int timePickUpCar = 1000;
+    // Блокировка критической секции с включённой поддержкой честности
+    private final Lock lock = new ReentrantLock(true);
+    // Состояние блокировки
+    private final Condition condition = lock.newCondition();
 
-    public CarShowroom() {
+    public int getSales() {
+        return sales;
     }
 
-
-    Manufacturer manufacturer = new Manufacturer(this);
-
-    private final int SELL_TIME = 1000;
-
-    List<Car> cars = new ArrayList<>();
-
-
+    public int getProduct() {
+        return product;
+    }
     /**
-     * Покупка автомобиля и проверка его наличия
+     * Покупка автомобиля
      */
     public void carSale() {
-            System.out.println(Thread.currentThread().getName() + " зашел в автосалон");
-            try {
-                manufacturer.carSale();
-                Thread.sleep(SELL_TIME);
-            } catch (InterruptedException err) {
-                err.printStackTrace();
+        try {
+            lock.lock();
+            while (product == 0) {
+                condition.await();
             }
-            System.out.println(Thread.currentThread().getName() + " уехал на новеньком автомобиле ");
+            Thread.sleep(carTimeRegistration);
+            product--;
+            sales++;
+            condition.signal();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } finally {
+            lock.unlock();
         }
 
-
-    /**
-     * Запрос на изготовление автомобиля
-     */
-    public void gettingCar() {
-            try {
-                manufacturer.carRelease();
-            } catch (Exception err) {
-                err.printStackTrace();
-            }
-        }
-
-    public List<Car> getCars() {
-        return cars;
     }
+    /**
+     * Добавление нового автомобился в салон
+     */
+    public void createCar() {
+        try {
+            lock.lock();
+            while (product > 0) {
+                condition.await();
+            }
+            Thread.sleep(timePickUpCar);
+            product++;
+            System.out.println("Производитель выпустил 1 авто");
+            condition.signal();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } finally {
+            lock.unlock();
+        }
 
-
+    }
 }
